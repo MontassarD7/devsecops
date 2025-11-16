@@ -1,0 +1,122 @@
+pipeline {
+    agent any
+
+    environment {
+        SONAR_TOKEN = credentials('sonar-token')
+    }
+
+    stages {
+
+        // 1️⃣ Install Dependencies
+        stage('Install Dependencies') {
+            steps {
+                dir('node-js-getting-started') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        // 2️⃣ SAST SonarQube Analysis
+        stage('SAST SonarQube Analysis') {
+            steps {
+                dir('node-js-getting-started') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''sonar-scanner \
+                          -Dsonar.projectKey=node-app \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url=http://localhost:9000 \
+                          -Dsonar.login=$SONAR_TOKEN \
+                          -Dsonar.qualitygate.wait=true'''
+                    }
+                }
+            }
+        }
+
+        // 3️⃣ OWASP Dependency Scan
+        stage('OWASP Dependency Scan') {
+            steps {
+                dir('node-js-getting-started') {
+                    sh 'npx @owasp/dependency-check --failOnCVSS 7'
+                }
+            }
+        }
+
+        // 4️⃣ Secrets Scan
+        stage('Secrets Scan') {
+            steps {
+                sh 'gitleaks detect --source . --exit-code 1'
+            }
+        }
+
+        // 5️⃣ Build Docker Image
+        stage('Build Docker Image') {
+            steps {
+                echo '🐳 Building Docker image...'
+                sh '''
+                    docker build -t myapp:latest node-js-getting-started/
+                '''
+            }
+        }
+
+        // 6️⃣ Docker Image Scan
+        stage('Docker Image Scan') {
+            steps {
+                script {
+                    echo '🔍 Running Trivy Docker image scan...'
+                    sh '''
+                        trivy image \
+                            --timeout 10m \
+                            --exit-code 0 \
+                            --no-progress \
+                            --format json \
+                            -o trivy-report.json \
+                            myapp:latest
+
+                        trivy image \
+                            --timeout 10m \
+                            --exit-code 0 \
+                            --no-progress \
+                            --format table \
+                            myapp:latest | head -n 20
+                    '''
+                    archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
+                    echo '✅ Trivy scan complete.'
+                }
+            }
+        }
+
+        // 7️⃣ DAST Scan
+        stage('DAST Scan') {
+            steps {
+                echo "🔍 Running DAST scan with Nikto..."
+                sh '''
+                    nikto -h http://staging.monsite.com:8080 -output nikto-report.html
+                '''
+                archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
+            }
+        }
+
+        // 8️⃣ Deploy
+        stage('Deploy') {
+            steps {
+                echo '🚀 Deploying application...'
+                sh '''
+                    docker stop myapp || true
+                    docker rm myapp || true
+                    docker run -d --name myapp -p 8081:3000 myapp:latest
+                '''
+                echo '✅ Deployment complete.'
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline DevSecOps completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed — check the console output for details.'
+        }
+    }
+}
