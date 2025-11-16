@@ -105,7 +105,7 @@ pipeline {
             timeout 30 bash -c 'until nc -z localhost 8081; do sleep 1; done'
         '''
         echo "🔍 Running DAST scan with Nikto..."
-        sh 'nikto -h http://localhost:8081 -output nikto-report.html'
+        sh 'docker exec devsecops nikto -h http://localhost:5006 -output nikto-report.html'
         archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
     }
 }
