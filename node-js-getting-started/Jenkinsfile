@@ -101,14 +101,15 @@ pipeline {
         stage('DAST Scan') {
     steps {
         echo "🔍 Waiting for application to start..."
-        sh 'sleep 15' // wait 15 seconds
-        echo "🔍 Running DAST scan with Nikto..."
         sh '''
-            nikto -h http://localhost:8081 -output nikto-report.html
+            timeout 30 bash -c 'until nc -z localhost 8081; do sleep 1; done'
         '''
+        echo "🔍 Running DAST scan with Nikto..."
+        sh 'nikto -h http://localhost:8081 -output nikto-report.html'
         archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
     }
 }
+
 
 
 
