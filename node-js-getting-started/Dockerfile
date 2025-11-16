@@ -16,10 +16,5 @@ COPY . .
 # Expose port the app runs on
 EXPOSE 8080
 
-# Install Perl and Nikto
-RUN apt-get update && \
-    apt-get install -y nikto && \
-    rm -rf /var/lib/apt/lists/*
-
 # Start the app
 CMD ["node", "index.js"]
