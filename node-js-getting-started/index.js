@@ -14,9 +14,9 @@ app.get('/', (req, res) => {
   res.render('pages/index')
 })
 
-const server = app.listen(port, () => {
+const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Listening on ${port}`)
-})
+});
 
 // The number of seconds an idle Keep-Alive connection is kept open. This should be greater than the Heroku Router's
 // Keep-Alive idle timeout of 90 seconds:
