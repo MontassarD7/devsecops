@@ -5,10 +5,11 @@ pipeline {
         SONAR_TOKEN = credentials('sonar-token')
     }
 
-    tools {
+  tools {
     nodejs 'NodeJS 20'
-    sonarQubeScanner 'SonarScanner'   // 👈 Add this
+    sonarRunner 'SonarScanner'
 }
+
 
     stages {
 
