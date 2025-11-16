@@ -99,14 +99,17 @@ pipeline {
 
         /* 7️⃣ DAST Scan */
         stage('DAST Scan') {
-            steps {
-                echo "🔍 Running DAST scan with Nikto..."
-                sh '''
-                    nikto -h http://localhost:8081 -output nikto-report.html
-                '''
-                archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
-            }
-        }
+    steps {
+        echo "🔍 Waiting for application to start..."
+        sh 'sleep 10' // wait 10 seconds for server to be ready
+        echo "🔍 Running DAST scan with Nikto..."
+        sh '''
+            nikto -h http://localhost:8081 -output nikto-report.html
+        '''
+        archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
+    }
+}
+
 
         /* 8️⃣ Deploy */
         stage('Deploy') {
