@@ -6,8 +6,9 @@ pipeline {
     }
 
     tools {
-        nodejs 'NodeJS 20'
-    }
+    nodejs 'NodeJS 20'
+    sonarQubeScanner 'SonarScanner'   // 👈 Add this
+}
 
     stages {
 
@@ -22,20 +23,21 @@ pipeline {
 
         /* 2️⃣ SAST SonarQube Analysis */
         stage('SAST SonarQube Analysis') {
-            steps {
-                dir('node-js-getting-started') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh '''
-                            sonar-scanner \
-                              -Dsonar.projectKey=devsecops \
-                              -Dsonar.sources=. \
-                              -Dsonar.host.url=http://localhost:9000 \
-                              -Dsonar.login=$SONAR_TOKEN \
-                        '''
-                    }
-                }
+    steps {
+        dir('node-js-getting-started') {
+            withSonarQubeEnv('SonarQube') {
+                sh '''
+                    sonar-scanner \
+                      -Dsonar.projectKey=devsecops \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=http://localhost:9000 \
+                      -Dsonar.login=$SONAR_TOKEN
+                '''
             }
         }
+    }
+}
+
 
         /* 3️⃣ OWASP Dependency Scan */
         stage('OWASP Dependency Scan') {
