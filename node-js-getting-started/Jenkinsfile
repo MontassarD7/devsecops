@@ -101,7 +101,7 @@ pipeline {
         stage('DAST Scan') {
     steps {
         echo "🔍 Waiting for application to start..."
-        sh 'sleep 10' // wait 10 seconds for server to be ready
+        sh 'sleep 15' // wait 15 seconds
         echo "🔍 Running DAST scan with Nikto..."
         sh '''
             nikto -h http://localhost:8081 -output nikto-report.html
@@ -109,6 +109,7 @@ pipeline {
         archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
     }
 }
+
 
 
         /* 8️⃣ Deploy */
