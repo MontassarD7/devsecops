@@ -115,7 +115,7 @@ pipeline {
                 sh '''
                     docker stop devsecops || true
                     docker rm devsecops || true
-                    docker run -d --name devsecops -p 8081:3000 devsecops:latest
+                    docker run -d --name devsecops -p 8081:5006 devsecops:latest
                 '''
                 echo '✅ Deployment complete.'
             }
