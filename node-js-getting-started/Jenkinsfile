@@ -97,25 +97,35 @@ pipeline {
             }
         }
 
-        stage('Run App Container') {
-  steps {
-    sh 'docker run -d --name devsecops -p 5006:5006 devsecops:latest'
-  }
-}
 
 
         /* 7️⃣ DAST Scan */
         stage('DAST Scan') {
-  steps {
-    echo '🔍 Running DAST scan with Nikto...'
-    sh '''
-      # wait for container to start
-      timeout 60 bash -c "until nc -z localhost 5006; do sleep 1; done"
-      # run nikto on host, targeting container port
-      nikto -h http://localhost:5006 -output nikto-report.html
-    '''
-  }
+    steps {
+        script {
+            echo "🔍 Running DAST scan with Nikto..."
+
+            // Clean up any existing container with the same name
+            sh 'docker rm -f devsecops || true'
+
+            // Start the container
+            sh 'docker run -d --name devsecops -p 5006:5006 devsecops:latest'
+
+            // Wait until the container is listening on port 5006 (up to 60s)
+            sh 'timeout 60 bash -c "until nc -z localhost 5006; do sleep 1; done"'
+
+            // Run Nikto scan
+            sh 'docker exec devsecops nikto -h http://localhost:5006 -output nikto-report.html'
+
+            // Stop and remove the container after scanning
+            sh 'docker stop devsecops || true'
+            sh 'docker rm devsecops || true'
+
+            echo "✅ DAST scan completed. Report: nikto-report.html"
+        }
+    }
 }
+
 
 
 
