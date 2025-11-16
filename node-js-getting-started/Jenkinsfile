@@ -5,6 +5,10 @@ pipeline {
         SONAR_TOKEN = credentials('sonar-token')
     }
 
+    tools {
+    nodejs 'NodeJS 20'  // The name you gave in Global Tool Configuration
+}
+
     stages {
 
         // 1️⃣ Install Dependencies
