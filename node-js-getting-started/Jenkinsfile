@@ -5,11 +5,9 @@ pipeline {
         SONAR_TOKEN = credentials('sonar-token')
     }
 
-  tools {
-    nodejs 'NodeJS 20'
-}
-
-
+    tools {
+        nodejs 'NodeJS 20'
+    }
 
     stages {
 
@@ -24,24 +22,22 @@ pipeline {
 
         /* 2️⃣ SAST SonarQube Analysis */
         stage('SAST SonarQube Analysis') {
-    steps {
-        dir('node-js-getting-started') {
-            withSonarQubeEnv('SonarQube') {
-                withEnv(["PATH+SONAR=${tool 'SonarScanner'}/bin"]) {
-                    sh '''
-                        sonar-scanner \
-                          -Dsonar.projectKey=devsecops \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=http://localhost:9000 \
-                          -Dsonar.login=$SONAR_TOKEN
-                    '''
+            steps {
+                dir('node-js-getting-started') {
+                    withSonarQubeEnv('SonarQube') {
+                        withEnv(["PATH+SONAR=${tool 'SonarScanner'}/bin"]) {
+                            sh '''
+                                sonar-scanner \
+                                  -Dsonar.projectKey=devsecops \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.host.url=http://localhost:9000 \
+                                  -Dsonar.login=$SONAR_TOKEN
+                            '''
+                        }
+                    }
                 }
             }
         }
-    }
-}
-
-
 
         /* 3️⃣ OWASP Dependency Scan */
         stage('OWASP Dependency Scan') {
@@ -55,7 +51,7 @@ pipeline {
         /* 4️⃣ Secrets Scan */
         stage('Secrets Scan') {
             steps {
-                dir('node-js-getting-starting') {
+                dir('node-js-getting-started') {
                     sh 'gitleaks detect --source . --exit-code 1 || true'
                 }
             }
@@ -97,39 +93,35 @@ pipeline {
             }
         }
 
-
-
         /* 7️⃣ DAST Scan */
         stage('DAST Scan') {
-    steps {
-        script {
-            echo "🔍 Running DAST scan with Nikto..."
+            steps {
+                script {
+                    echo "🔍 Running DAST scan with Nikto..."
 
-            // Clean up any existing container with the same name
-            sh 'docker rm -f devsecops || true'
+                    // Remove any old containers
+                    sh 'docker rm -f devsecops || true'
 
-            // Start the container
-            sh 'docker run -d --name devsecops -p 5006:5006 devsecops:latest'
+                    // Start the app container
+                    sh 'docker run -d --name devsecops -p 5006:5006 devsecops:latest'
 
-            // Wait until the container is listening on port 5006 (up to 60s)
-            sh 'timeout 60 bash -c "until nc -z localhost 5006; do sleep 1; done"'
+                    // Wait for the app to be up
+                    sh 'timeout 60 bash -c "until nc -z localhost 5006; do sleep 1; done"'
 
-            // Run Nikto scan
-            sh 'docker exec devsecops nikto -h http://localhost:5006 -output nikto-report.html'
+                    // Run Nikto in a separate container targeting the app container
+                    sh '''
+                        docker run --rm --network host sullo/nikto -h http://localhost:5006 -output nikto-report.html
+                    '''
 
-            // Stop and remove the container after scanning
-            sh 'docker stop devsecops || true'
-            sh 'docker rm devsecops || true'
+                    // Stop the app container
+                    sh 'docker stop devsecops || true'
+                    sh 'docker rm devsecops || true'
 
-            echo "✅ DAST scan completed. Report: nikto-report.html"
+                    archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
+                    echo "✅ DAST scan completed. Report: nikto-report.html"
+                }
+            }
         }
-    }
-}
-
-
-
-
-
 
         /* 8️⃣ Deploy */
         stage('Deploy') {
