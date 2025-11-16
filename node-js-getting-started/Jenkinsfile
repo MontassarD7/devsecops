@@ -99,16 +99,17 @@ pipeline {
 
         /* 7️⃣ DAST Scan */
         stage('DAST Scan') {
-    steps {
-        echo "🔍 Waiting for application to start..."
-        sh '''
-            timeout 30 bash -c 'until nc -z localhost 8081; do sleep 1; done'
-        '''
-        echo "🔍 Running DAST scan with Nikto..."
-        sh 'docker exec devsecops nikto -h http://localhost:5006 -output nikto-report.html'
-        archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
-    }
+  steps {
+    echo '🔍 Running DAST scan with Nikto...'
+    sh '''
+      # wait for container to start
+      timeout 60 bash -c "until nc -z localhost 5006; do sleep 1; done"
+      # run nikto on host, targeting container port
+      nikto -h http://localhost:5006 -output nikto-report.html
+    '''
+  }
 }
+
 
 
 
