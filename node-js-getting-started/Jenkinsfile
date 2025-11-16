@@ -95,33 +95,39 @@ pipeline {
 
         /* 7️⃣ DAST Scan */
         stage('DAST Scan') {
-            steps {
-                script {
-                    echo "🔍 Running DAST scan with Nikto..."
+  steps {
+    script {
+      echo "🔍 Running DAST scan with Nikto..."
 
-                    // Remove any old containers
-                    sh 'docker rm -f devsecops || true'
+      // Run your app container
+      sh 'docker rm -f devsecops || true'
+      sh 'docker run -d --name devsecops -p 5006:5006 devsecops:latest'
 
-                    // Start the app container
-                    sh 'docker run -d --name devsecops -p 5006:5006 devsecops:latest'
+      // Wait for the app to start
+      sh 'timeout 60 bash -c "until nc -z localhost 5006; do sleep 1; done"'
 
-                    // Wait for the app to be up
-                    sh 'timeout 60 bash -c "until nc -z localhost 5006; do sleep 1; done"'
+      // Run Nikto scan using dominicbreuker/nikto_docker image
+      sh '''
+      docker run --rm \\
+        --network host \\
+        dominicbreuker/nikto_docker:latest \\
+        -host localhost -port 5006 -output /tmp/nikto-report.html
+      '''
 
-                    // Run Nikto in a separate container targeting the app container
-                    sh '''
-                        docker run --rm --network host sullo/nikto -h http://localhost:5006 -output nikto-report.html
-                    '''
+      // Copy report to Jenkins workspace
+      sh 'docker cp $(docker ps -qf "name=devsecops"):/tmp/nikto-report.html nikto-report.html || true'
 
-                    // Stop the app container
-                    sh 'docker stop devsecops || true'
-                    sh 'docker rm devsecops || true'
+      // Stop the app container
+      sh 'docker stop devsecops || true'
+      sh 'docker rm devsecops || true'
 
-                    archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
-                    echo "✅ DAST scan completed. Report: nikto-report.html"
-                }
-            }
-        }
+      archiveArtifacts artifacts: 'nikto-report.html', allowEmptyArchive: true
+
+      echo "✅ DAST scan completed."
+    }
+  }
+}
+
 
         /* 8️⃣ Deploy */
         stage('Deploy') {
