@@ -97,6 +97,13 @@ pipeline {
             }
         }
 
+        stage('Run App Container') {
+  steps {
+    sh 'docker run -d --name devsecops -p 5006:5006 devsecops:latest'
+  }
+}
+
+
         /* 7️⃣ DAST Scan */
         stage('DAST Scan') {
   steps {
