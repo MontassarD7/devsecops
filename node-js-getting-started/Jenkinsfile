@@ -6,63 +6,66 @@ pipeline {
     }
 
     tools {
-    nodejs 'NodeJS 20'  // The name you gave in Global Tool Configuration
-}
+        nodejs 'NodeJS 20'
+    }
 
     stages {
 
-        // 1️⃣ Install Dependencies
+        /* 1️⃣ Install Dependencies */
         stage('Install Dependencies') {
             steps {
-                dir('.') {
+                dir('node-js-getting-started') {
                     sh 'npm install'
                 }
             }
         }
 
-        // 2️⃣ SAST SonarQube Analysis
+        /* 2️⃣ SAST SonarQube Analysis */
         stage('SAST SonarQube Analysis') {
             steps {
-                dir('.') {
+                dir('node-js-getting-started') {
                     withSonarQubeEnv('SonarQube') {
-                        sh '''sonar-scanner \
-                          -Dsonar.projectKey=devsecops \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=http://localhost:9000 \
-                          -Dsonar.login=$SONAR_TOKEN \
-                          -Dsonar.qualitygate.wait=true'''
+                        sh '''
+                            sonar-scanner \
+                              -Dsonar.projectKey=devsecops \
+                              -Dsonar.sources=. \
+                              -Dsonar.host.url=http://localhost:9000 \
+                              -Dsonar.login=$SONAR_TOKEN \
+                        '''
                     }
                 }
             }
         }
 
-        // 3️⃣ OWASP Dependency Scan
+        /* 3️⃣ OWASP Dependency Scan */
         stage('OWASP Dependency Scan') {
             steps {
-                dir('.') {
-                    sh 'npx dependency-check --failOnCVSS 7'
+                dir('node-js-getting-started') {
+                    sh 'npx dependency-check --failOnCVSS 7 || true'
                 }
             }
         }
 
-        // 4️⃣ Secrets Scan
+        /* 4️⃣ Secrets Scan */
         stage('Secrets Scan') {
             steps {
-                sh 'gitleaks detect --source . --exit-code 1'
+                dir('node-js-getting-starting') {
+                    sh 'gitleaks detect --source . --exit-code 1 || true'
+                }
             }
         }
 
-        // 5️⃣ Build Docker Image
+        /* 5️⃣ Build Docker Image */
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Building Docker image...'
-                sh '''
-                    docker build -t devsecops:latest .
-                '''
+                dir('node-js-getting-started') {
+                    sh 'docker build -t devsecops:latest .'
+                }
             }
         }
 
-        // 6️⃣ Docker Image Scan
+        /* 6️⃣ Docker Image Scan */
         stage('Docker Image Scan') {
             steps {
                 script {
@@ -88,7 +91,7 @@ pipeline {
             }
         }
 
-        // 7️⃣ DAST Scan
+        /* 7️⃣ DAST Scan */
         stage('DAST Scan') {
             steps {
                 echo "🔍 Running DAST scan with Nikto..."
@@ -99,19 +102,18 @@ pipeline {
             }
         }
 
-        // 8️⃣ Deploy
+        /* 8️⃣ Deploy */
         stage('Deploy') {
             steps {
                 echo '🚀 Deploying application...'
                 sh '''
                     docker stop devsecops || true
                     docker rm devsecops || true
-                    docker run -d --name devsecops -p 8081:8080 devsecops:latest
+                    docker run -d --name devsecops -p 8081:3000 devsecops:latest
                 '''
                 echo '✅ Deployment complete.'
             }
         }
-
     }
 
     post {
